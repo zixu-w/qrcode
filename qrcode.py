@@ -15,7 +15,7 @@ import copy
 		import qrcode
 		qrcode.qrcode(data string [, width [, filename]])
 
-	Coordinate system used for matrices:
+	Coordinate system used:
 			i
 		o-------->
 		|
@@ -23,8 +23,6 @@ import copy
 		|
 		v
 
-	Transpose is needed to adapt the coordinate
-	system used in PIL.
 '''''''''''''''''''''''''''''''''''''''''''''''''''
 
 # Debug echo flag.
@@ -45,7 +43,7 @@ class CapacityOverflowException(Exception):
 def _matCp(src, dst, top, left):
 	'''
 	Copy the content of matrix src into matrix dst.
-	The top-left corner of src is positioned at (top, left)
+	The top-left corner of src is positioned at (left, top)
 	in dst.
 	'''
 	res = copy.deepcopy(dst)
@@ -274,7 +272,7 @@ def _fillByte(byte, downwards=False):
 	return res
 
 def _fillData(bitstream):
-	'''Fill the encoded data into the template qr code matrix'''
+	'''Fill the encoded data into the template QR code matrix'''
 	res = copy.deepcopy(_ver1)
 	for i in range(15):
 		res = _matCp(_fillByte(bitstream[i], (i/3)%2!=0),
@@ -303,8 +301,8 @@ def _fillData(bitstream):
 
 def _fillInfo(arg):
 	'''
-	Fill the encoded format code into the masked qr code matrix.
-	arg: (masked qr code matrix, mask number).
+	Fill the encoded format code into the masked QR code matrix.
+	arg: (masked QR code matrix, mask number).
 	'''
 	mat, mask = arg
 	fmt = _fmtEncode(int('01'+'{:03b}'.format(mask), 2))
@@ -393,7 +391,7 @@ def _penalty(mat):
 
 def _mask(mat):
 	'''
-	Mask the data qr code matrix with all 8 masks,
+	Mask the data QR code matrix with all 8 masks,
 	call _penalty to calculate penalty scores for each
 	and select the best mask.
 	Return tuple(selected masked matrix, number of selected mask).
@@ -412,7 +410,7 @@ def _mask(mat):
 def _genBitmap(bitstream):
 	'''
 	Take in the encoded data stream and generate the
-	final qr code bitmap.
+	final QR code bitmap.
 	'''
 	return _fillInfo(_mask(_fillData(bitstream)))
 
@@ -425,9 +423,9 @@ def _genImage(bitmap, width, filename):
 	drw = ImageDraw.Draw(img)
 	pwidth = width / len(bitmap) # Normalized pixel width.
 	for j in range(width):
-		normalj = j / pwidth # Normalized x coordinate in bitmap
+		normalj = j / pwidth # Normalized j coordinate in bitmap
 		for i in range(width):
-			normali = i / pwidth # Normalized y coordinate in bitmap
+			normali = i / pwidth # Normalized i coordinate in bitmap
 			if normalj < len(bitmap) and normali < len(bitmap):
 				# Draw pixel.
 				drw.point((i, j), fill=bitmap[normalj][normali])
