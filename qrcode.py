@@ -16,10 +16,10 @@ import copy
 		qrcode.qrcode(data string [, width [, filename]])
 
 	Coordinate system used for matrices:
-			y
+			i
 		o-------->
 		|
-	  x |   .--> (x, y) for mat[x][y]
+	  j |   .--> (i, j) for mat[j][i]
 		|
 		v
 
@@ -49,14 +49,14 @@ def _matCp(src, dst, top, left):
 	in dst.
 	'''
 	res = copy.deepcopy(dst)
-	for x in range(len(src)):
-		for y in range(len(src[0])):
-			res[top+x][left+y] = src[x][y]
+	for j in range(len(src)):
+		for i in range(len(src[0])):
+			res[top+j][left+i] = src[j][i]
 	return res
 
 def _transpose(mat):
 	'''Transpose a matrix'''
-	res = [[mat[i][j] for i in range(len(mat))] for j in range(len(mat[0]))]
+	res = [[mat[j][i] for j in range(len(mat))] for i in range(len(mat[0]))]
 	return res
 
 def _timSeq(len, vertical=False):
@@ -79,9 +79,9 @@ def _matAnd(mat1, mat2):
 	Light and dark -> light
 	'''
 	res = [[_LIGHT for i in range(len(mat1[0]))] for j in range(len(mat1))]
-	for i in range(len(mat1)):
-		for j in range(len(mat1[0])):
-			res[i][j] = int(mat1[i][j] == _LIGHT or mat2[i][j] == _LIGHT)
+	for j in range(len(mat1)):
+		for i in range(len(mat1[0])):
+			res[j][i] = int(mat1[j][i] == _LIGHT or mat2[j][i] == _LIGHT)
 	return res
 
 def _matXor(mat1, mat2):
@@ -93,9 +93,9 @@ def _matXor(mat1, mat2):
 	Light xor dark -> dark
 	'''
 	res = [[_LIGHT for i in range(len(mat1[0]))] for j in range(len(mat1))]
-	for i in range(len(mat1)):
-		for j in range(len(mat1[0])):
-			res[i][j] = int(mat1[i][j] == mat2[i][j])
+	for j in range(len(mat1)):
+		for i in range(len(mat1[0])):
+			res[j][i] = int(mat1[j][i] == mat2[j][i])
 	return res
 
 
@@ -134,10 +134,10 @@ _dataAreaMask = _matCp([[_LIGHT] for i in range(4)], _dataAreaMask, 9, 6)
 # i and j are transposed due to coordinate system issue.
 _dataMasks = []
 _dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i+j)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if j%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if i%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if i%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if j%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
 _dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i+j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (j/2 + i/3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i/2 + j/3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
 _dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i*j)%2+(i*j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
 _dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if ((i*j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
 _dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if ((i+j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
@@ -320,11 +320,11 @@ def _fillInfo(arg):
 def _penalty(mat):
 	'''Calculate penalty score for a masked matrix.'''
 	n1 = n2 = n3 = n4 = 0
-	for x in range(len(mat)):
+	for j in range(len(mat)):
 		count = 1
 		adj = False
-		for y in range(1, len(mat)):
-			if mat[x][y] == mat[x][y-1]:
+		for i in range(1, len(mat)):
+			if mat[j][i] == mat[j][i-1]:
 				count += 1
 			else:
 				count = 1
@@ -335,11 +335,11 @@ def _penalty(mat):
 					n1 += 3
 				else:
 					n1 += 1
-	for y in range(len(mat)):
+	for i in range(len(mat)):
 		count = 1
 		adj = False
-		for x in range(1, len(mat)):
-			if mat[x][y] == mat[x-1][y]:
+		for j in range(1, len(mat)):
+			if mat[j][i] == mat[j-1][i]:
 				count += 1
 			else:
 				count = 1
@@ -351,12 +351,12 @@ def _penalty(mat):
 				else:
 					n1 += 1
 	m = n = 1
-	for x in range(1, len(mat)):
-		for y in range(1, len(mat)):
-			if mat[x][y] == mat[x-1][y] and mat[x][y] == mat[x][y-1] and mat[x][y] == mat[x-1][y-1]:
-				if mat[x][y] == mat[x-1][y]:
+	for j in range(1, len(mat)):
+		for i in range(1, len(mat)):
+			if mat[j][i] == mat[j-1][i] and mat[j][i] == mat[j][i-1] and mat[j][i] == mat[j-1][i-1]:
+				if mat[j][i] == mat[j-1][i]:
 					m += 1
-				if mat[x][y] == mat[x][y-1]:
+				if mat[j][i] == mat[j][i-1]:
 					n += 1
 			else:
 				n2 += 3 * (m-1) * (n-1)
@@ -424,14 +424,13 @@ def _genImage(bitmap, width, filename):
 	img = Image.new('1', (width, width), 'white') # New image in black-white mode initialized with white.
 	drw = ImageDraw.Draw(img)
 	pwidth = width / len(bitmap) # Normalized pixel width.
-	for x in range(width):
-		normalx = x / pwidth # Normalized x coordinate in bitmap
-		for y in range(width):
-			normaly = y / pwidth # Normalized y coordinate in bitmap
-			if normalx < len(bitmap) and normaly < len(bitmap):
-				# Draw pixel. Transpose is performed here as drawing
-				# bitmap[x][y] to point (y, x).
-				drw.point((y, x), fill=bitmap[normalx][normaly])
+	for j in range(width):
+		normalj = j / pwidth # Normalized x coordinate in bitmap
+		for i in range(width):
+			normali = i / pwidth # Normalized y coordinate in bitmap
+			if normalj < len(bitmap) and normali < len(bitmap):
+				# Draw pixel.
+				drw.point((i, j), fill=bitmap[normalj][normali])
 	img.save(filename)
 
 def qrcode(data, width=210, filename='qrcode.jpg'):
