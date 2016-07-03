@@ -118,6 +118,7 @@ _ver1 = _matCp(_finder, _ver1, 14, 0)
 _ver1 = _matCp(_finder, _ver1, 0, 14)
 _ver1 = _matCp(_timSeq(5), _ver1, 6, 8)
 _ver1 = _matCp(_timSeq(5, vertical=True), _ver1, 8, 6)
+_ver1 = _matCp([[_DARK]], _ver1, 13, 8)
 
 # Data area mask to avoid applying masks to functional area.
 _dataAreaMask = [[_DARK for i in range(21)] for j in range(21)]
