@@ -132,10 +132,10 @@ _dataAreaMask = _matCp([[_LIGHT] for i in range(4)], _dataAreaMask, 9, 6)
 # i and j are transposed due to coordinate system issue.
 _dataMasks = []
 _dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i+j)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if i%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if j%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if j%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if i%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
 _dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i+j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i/2 + j/3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (j/2 + i/3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
 _dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i*j)%2+(i*j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
 _dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if ((i*j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
 _dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if ((i+j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
