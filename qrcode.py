@@ -13,7 +13,9 @@ import copy
 
     Usage:
         import qrcode
-        qrcode.qrcode(data string [, width [, filename]])
+        qrcode.qrcode(data string [, width] [, filename])
+
+    Or see qrcode_example.py
 
     Coordinate system used:
             i
