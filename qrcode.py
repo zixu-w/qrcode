@@ -129,16 +129,53 @@ _dataAreaMask = _matCp([[_LIGHT for i in range(4)]], _dataAreaMask, 6, 9)
 _dataAreaMask = _matCp([[_LIGHT] for i in range(4)], _dataAreaMask, 9, 6)
 
 # Data masks defined in QR standard.
-# i and j are transposed due to coordinate system issue.
 _dataMasks = []
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i+j)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if j%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if i%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i+j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (j/2 + i/3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if (i*j)%2+(i*j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if ((i*j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask, [[_DARK if ((i+j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask,
+	[[_DARK if (i+j)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask,
+	[[_DARK if j%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask,
+	[[_DARK if i%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask,
+	[[_DARK if (i+j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask,
+	[[_DARK if (j/2 + i/3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask,
+	[[_DARK if (i*j)%2+(i*j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask,
+	[[_DARK if ((i*j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
+_dataMasks.append(_matAnd(_dataAreaMask,
+	[[_DARK if ((i+j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
+
+def _genImage(bitmap, width, filename):
+	'''
+	Generate image corresponding to the input bitmap
+	with specified width and filename.
+	'''
+	# New image in black-white mode initialized with white.
+	img = Image.new('1', (width, width), 'white')
+	drw = ImageDraw.Draw(img)
+	# Normalized pixel width.
+	pwidth = width / len(bitmap)
+	for j in range(width):
+		# Normalized j coordinate in bitmap
+		normalj = j / pwidth
+		for i in range(width):
+			# Normalized i coordinate in bitmap
+			normali = i / pwidth
+			if normalj < len(bitmap) and normali < len(bitmap):
+				# Draw pixel.
+				drw.point((i, j), fill=bitmap[normalj][normali])
+	img.save(filename)
+
+# Generate images for predefined patterns for debug use.
+if __DEBUG:
+	_genImage(_finder, 70, 'finder.jpg')
+	_genImage(_align, 50, 'alignment.jpg')
+	_genImage(_ver1, 210, 'version1.jpg')
+	_genImage(_dataAreaMask, 210, 'dataAreaMask.jpg')
+	for i in range(8):
+		_genImage(_dataMasks[i], 210, 'mask'+str(i)+'.jpg')
 
 def _gfpMul(x, y, prim=0x11d, field_charac_full=256, carryless=True):
 	'''Galois field GF(2^8) multiplication.'''
@@ -234,20 +271,29 @@ def _encode(data):
 	group data, add padding suffix, and call RS encoding method.
 	'''
 	if len(data) > 17:
-		raise CapacityOverflowException('Error: Version 1 QR code encodes no more than 17 characters.')
+		raise CapacityOverflowException(
+			'Error: Version 1 QR code encodes no more than 17 characters.')
+	# Byte mode prefix 0100.
 	bitstring = '0100'
+	# Character count in 8 binary bits.
 	bitstring += '{:08b}'.format(len(data))
+	# Encode every character in ISO-8859-1 in 8 binary bits.
 	for c in data:
 		bitstring += '{:08b}'.format(ord(c.encode('iso-8859-1')))
+	# Terminator 0000.
 	bitstring += '0000'
 	res = list()
+	# Convert string to byte numbers.
 	while bitstring:
 		res.append(int(bitstring[:8], 2))
 		bitstring = bitstring[8:]
+	# Add padding pattern.
 	while len(res) < 19:
 		res.append(int('11101100', 2))
 		res.append(int('00010001', 2))
+	# Slice to 19 bytes for V1-L.
 	res = res[:19]
+	# Call _rsEncode to add 7 EC bits.
 	return _rsEncode(res, 7)
 
 def _fillByte(byte, downwards=False):
@@ -297,6 +343,9 @@ def _fillData(bitstream):
 	for i in range(3):
 		res = _matCp(_fillByte(bitstream[23+i], i%2==0),
 			res, 9, 4-2*i)
+	# Generate image after filling data for debug use.
+	if __DEBUG:
+		_genImage(res, 210, 'data.jpg')
 	return res
 
 def _fillInfo(arg):
@@ -305,6 +354,9 @@ def _fillInfo(arg):
 	arg: (masked QR code matrix, mask number).
 	'''
 	mat, mask = arg
+	# 01 is the format code for L error control level,
+	# concatenated with mask id and passed into _fmtEncode
+	# to get the 15 bits format code with EC bits.
 	fmt = _fmtEncode(int('01'+'{:03b}'.format(mask), 2))
 	fmtarr = [[not int(c)] for c in '{:015b}'.format(fmt)]
 	mat = _matCp(_transpose(fmtarr[7:]), mat, 8, 13)
@@ -316,8 +368,26 @@ def _fillInfo(arg):
 	return mat
 
 def _penalty(mat):
-	'''Calculate penalty score for a masked matrix.'''
+	'''
+	Calculate penalty score for a masked matrix.
+	N1: penalty for more than 5 consecutive pixels in row/column,
+		3 points for each occurrence of such pattern,
+		and extra 1 point for each pixel exceeding 5
+		consecutive pixels.
+	N2: penalty for blocks of pixels larger than 2x2.
+		3*(m-1)*(n-1) points for each block of mxn
+		(larger than 2x2).
+	N3: penalty for patterns similar to the finder pattern.
+		40 points for each occurrence of 1:1:3:1:1 ratio
+		(dark:light:dark:light:dark) pattern in row/column,
+		preceded of followed by 4 consecutive light pixels.
+	N4: penalty for unbalanced dark/light ratio.
+		10*k points where k is the rating of the deviation of
+		the proportion of dark pixels from 50% in steps of 5%.
+	'''
+	# Initialize.
 	n1 = n2 = n3 = n4 = 0
+	# Calculate N1.
 	for j in range(len(mat)):
 		count = 1
 		adj = False
@@ -348,6 +418,7 @@ def _penalty(mat):
 					n1 += 3
 				else:
 					n1 += 1
+	# Calculate N2.
 	m = n = 1
 	for j in range(1, len(mat)):
 		for i in range(1, len(mat)):
@@ -359,6 +430,7 @@ def _penalty(mat):
 			else:
 				n2 += 3 * (m-1) * (n-1)
 				m = n = 1
+	# Calculate N3.
 	count = 0
 	for row in mat:
 		rowstr = ''.join(str(e) for e in row)
@@ -382,6 +454,7 @@ def _penalty(mat):
 			if rowstr.count('00000100010', begin-4) != 0 or rowstr.count('01000100000', begin) != 0:
 				count += 1
 	n3 += 40 * count
+	# Calculate N4.
 	dark = sum(row.count(_DARK) for row in mat)
 	percent = int((float(dark) / float(len(mat)**2)) * 100)
 	pre = percent - percent % 5
@@ -400,11 +473,16 @@ def _mask(mat):
 	penalty = [0] * 8
 	for i, masked in enumerate(maskeds):
 		penalty[i] = _penalty(masked)
+		# Print penalty scores for debug use.
 		if __DEBUG:
 			print 'penalty for mask {}: {}'.format(i, penalty[i])
+	# Find the id of the best mask.
 	index = penalty.index(min(penalty))
+	# Print selected mask and penalty score,
+	# and generate image for masked QR code for debug use.
 	if __DEBUG:
-		print '\nmask {} selected with penalty {}'.format(index, penalty[index])
+		print 'mask {} selected with penalty {}'.format(index, penalty[index])
+		_genImage(maskeds[index], 210, 'masked.jpg')
 	return maskeds[index], index
 
 def _genBitmap(bitstream):
@@ -413,23 +491,6 @@ def _genBitmap(bitstream):
 	final QR code bitmap.
 	'''
 	return _fillInfo(_mask(_fillData(bitstream)))
-
-def _genImage(bitmap, width, filename):
-	'''
-	Generate image corresponding to the input bitmap
-	with specified width and filename.
-	'''
-	img = Image.new('1', (width, width), 'white') # New image in black-white mode initialized with white.
-	drw = ImageDraw.Draw(img)
-	pwidth = width / len(bitmap) # Normalized pixel width.
-	for j in range(width):
-		normalj = j / pwidth # Normalized j coordinate in bitmap
-		for i in range(width):
-			normali = i / pwidth # Normalized i coordinate in bitmap
-			if normalj < len(bitmap) and normali < len(bitmap):
-				# Draw pixel.
-				drw.point((i, j), fill=bitmap[normalj][normali])
-	img.save(filename)
 
 def qrcode(data, width=210, filename='qrcode.jpg'):
 	'''Module public interface'''
