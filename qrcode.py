@@ -28,7 +28,7 @@ import copy
 '''''''''''''''''''''''''''''''''''''''''''''''''''
 
 # Debug echo flag.
-__DEBUG = True
+__DEBUG = False
 
 # 1 represents light pixels and 0 represents dark pixels in PIL.
 _LIGHT = 1
