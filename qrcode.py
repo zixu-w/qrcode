@@ -28,7 +28,7 @@ import copy
 '''''''''''''''''''''''''''''''''''''''''''''''''''
 
 # Debug echo flag.
-__DEBUG = False
+__DEBUG = True
 
 # 1 represents light pixels and 0 represents dark pixels in PIL.
 _LIGHT = 1
@@ -144,7 +144,7 @@ def darkPolicy(index):
         elif index == 3:
             policy = (i+j)%3
         elif index == 4:
-            policy = (j/2 + i/3)%2
+            policy = (j//2 + i//3)%2
         elif index == 5:
             policy = (i*j)%2+(i*j)%3
         elif index == 6:
@@ -348,7 +348,7 @@ def _fillData(bitstream):
     '''Fill the encoded data into the template QR code matrix'''
     res = copy.deepcopy(_ver1)
     for i in range(15):
-        res = _matCp(_fillByte(bitstream[i], (i/3)%2!=0),
+        res = _matCp(_fillByte(bitstream[i], (i//3)%2!=0),
             res,
             21-4*((i%3-1)*(-1)**((i//3)%2)+2),
             21-2*(i//3+1))
@@ -502,7 +502,7 @@ def _penalty(mat):
     percent = int((float(dark) / float(len(mat)**2)) * 100)
     pre = percent - percent % 5
     nex = percent + 5 - percent % 5
-    n4 = min(abs(pre-50)/5, abs(nex-50)/5) * 10
+    n4 = min(abs(pre-50)//5, abs(nex-50)//5) * 10
     return n1 + n2 + n3 + n4
 
 def _mask(mat):
