@@ -1,7 +1,8 @@
 ######################################
 # File:             qrcode.py
 # Author:           Wang Zixu
-# Last modified:    July 3, 2016
+# Co-Author:        Chen Zhihan
+# Last modified:    July 5, 2016
 ######################################
 
 from PIL import Image, ImageDraw
@@ -156,24 +157,7 @@ def darkPolicy(index):
 
 maskList = [[[_DARK if darkPolicy(c)(i,j) else _LIGHT for i in range(21)] for j in range(21)] for c in range(8)]
 _dataMasks = [_matAnd(_dataAreaMask,mask) for mask in maskList]
-"""
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if (i+j)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if j%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if i%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if (i+j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if (j/2 + i/3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if (i*j)%2+(i*j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if ((i*j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if ((i+j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-"""
+
 def _genImage(bitmap, width, filename):
     '''
     Generate image corresponding to the input bitmap
@@ -438,24 +422,9 @@ def _penalty(mat):
                     else:
                         n1 += 1
         return n1
-    """
-    for i in range(len(mat)):
-        count = 1
-        adj = False
-        for j in range(1, len(mat)):
-            if mat[j][i] == mat[j-1][i]:
-                count += 1
-            else:
-                count = 1
-                adj = False
-            if count >= 5:
-                if not adj:
-                    adj = True
-                    n1 += 3
-                else:
-                    n1 += 1
-    """
+
     n1=getN1(mat,"i")+getN1(mat,"j")
+
     # Calculate N2.
     m = n = 1
     for j in range(1, len(mat)):
@@ -468,6 +437,7 @@ def _penalty(mat):
             else:
                 n2 += 3 * (m-1) * (n-1)
                 m = n = 1
+
     # Calculate N3.
     count = 0
     def getCount(mat):
@@ -483,26 +453,18 @@ def _penalty(mat):
                 if rowstr.count('00000100010', begin-4) != 0 or rowstr.count('01000100000', begin) != 0:
                     count += 1
         return count
+
     transposedMat = _transpose(mat)
-    """
-    for row in transposedMat:
-        rowstr = ''.join(str(e) for e in row)
-        occurrences = []
-        begin = 0
-        while rowstr.find('0100010', begin) != -1:
-            begin = rowstr.find('0100010', begin) + 7
-            occurrences.append(begin)
-        for begin in occurrences:
-            if rowstr.count('00000100010', begin-4) != 0 or rowstr.count('01000100000', begin) != 0:
-                count += 1
-    """
     n3 += 40 * (getCount(mat)+getCount(transposedMat))
+
     # Calculate N4.
     dark = sum(row.count(_DARK) for row in mat)
     percent = int((float(dark) / float(len(mat)**2)) * 100)
     pre = percent - percent % 5
     nex = percent + 5 - percent % 5
     n4 = min(abs(pre-50)//5, abs(nex-50)//5) * 10
+
+    # Return final penalty score.
     return n1 + n2 + n3 + n4
 
 def _mask(mat):
@@ -520,13 +482,16 @@ def _mask(mat):
         if __DEBUG:
             print ('penalty for mask {}: {}'.format(i, penalty[i]))
     # Find the id of the best mask.
-    index = penalty.index(min(penalty))
+    selected = penalty.index(min(penalty))
     # Print selected mask and penalty score,
     # and generate image for masked QR code for debug use.
     if __DEBUG:
-        print ('mask {} selected with penalty {}'.format(index, penalty[index]))
-        _genImage(maskeds[index], 210, 'masked.jpg')
-    return maskeds[index], index
+        print ('mask {} selected with penalty {}'.format(selected, penalty[selected]))
+        _genImage(maskeds[selected], 210, 'selectedMasked(' + str(selected) + ').jpg')
+        for i, masked in enumerate(maskeds):
+            if i != selected:
+                _genImage(masked, 210, 'masked(' + str(i) + ').jpg')
+    return maskeds[selected], selected
 
 def _genBitmap(bitstream):
     '''
