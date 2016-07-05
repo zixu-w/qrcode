@@ -132,7 +132,31 @@ _dataAreaMask = _matCp([[_LIGHT for i in range(4)]], _dataAreaMask, 6, 9)
 _dataAreaMask = _matCp([[_LIGHT] for i in range(4)], _dataAreaMask, 9, 6)
 
 # Data masks defined in QR standard.
-_dataMasks = []
+
+def darkPolicy(index):
+    def choose(index,i,j):
+        if index==0:
+            policy = (i+j)%2
+        elif index == 1:
+            policy = j%2
+        elif index == 2:
+            policy = i%3
+        elif index == 3:
+            policy = (i+j)%3
+        elif index == 4:
+            policy = (j/2 + i/3)%2
+        elif index == 5:
+            policy = (i*j)%2+(i*j)%3
+        elif index == 6:
+            policy = ((i*j)%2+(i*j)%3)%2
+        elif index == 7:
+            policy = ((i+j)%2+(i*j)%3)%2
+        return policy == 0
+    return lambda i,j:choose(index,i,j)
+
+maskList = [[[_DARK if darkPolicy(c)(i,j) else _LIGHT for i in range(21)] for j in range(21)] for c in range(8)]
+_dataMasks = [_matAnd(_dataAreaMask,mask) for mask in maskList]
+"""
 _dataMasks.append(_matAnd(_dataAreaMask,
     [[_DARK if (i+j)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
 _dataMasks.append(_matAnd(_dataAreaMask,
@@ -149,7 +173,7 @@ _dataMasks.append(_matAnd(_dataAreaMask,
     [[_DARK if ((i*j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
 _dataMasks.append(_matAnd(_dataAreaMask,
     [[_DARK if ((i+j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-
+"""
 def _genImage(bitmap, width, filename):
     '''
     Generate image corresponding to the input bitmap
@@ -159,13 +183,13 @@ def _genImage(bitmap, width, filename):
     img = Image.new('1', (width, width), 'white')
     drw = ImageDraw.Draw(img)
     # Normalized pixel width.
-    pwidth = width / len(bitmap)
+    pwidth = width // len(bitmap)
     for j in range(width):
         # Normalized j coordinate in bitmap
-        normalj = j / pwidth
+        normalj = j // pwidth
         for i in range(width):
             # Normalized i coordinate in bitmap
-            normali = i / pwidth
+            normali = i // pwidth
             if normalj < len(bitmap) and normali < len(bitmap):
                 # Draw pixel.
                 drw.point((i, j), fill=bitmap[normalj][normali])
@@ -313,9 +337,9 @@ def _fillByte(byte, downwards=False):
         6|7         0|1
     '''
     bytestr = '{:08b}'.format(byte)
-    res = [[0, 0], [0, 0], [0, 0], [0, 0]]
+    res = [[0, 0] for i in range(4)]
     for i in range(8):
-        res[i/2][i%2] = not int(bytestr[7-i])
+        res[i//2][i%2] = not int(bytestr[7-i])
     if downwards:
         res = res[::-1]
     return res
@@ -326,8 +350,8 @@ def _fillData(bitstream):
     for i in range(15):
         res = _matCp(_fillByte(bitstream[i], (i/3)%2!=0),
             res,
-            21-4*((i%3-1)*(-1)**((i/3)%2)+2),
-            21-2*(i/3+1))
+            21-4*((i%3-1)*(-1)**((i//3)%2)+2),
+            21-2*(i//3+1))
     tmp = _fillByte(bitstream[15])
     res = _matCp(tmp[2:], res, 7, 11)
     res = _matCp(tmp[:2], res, 4, 11)
@@ -391,21 +415,30 @@ def _penalty(mat):
     # Initialize.
     n1 = n2 = n3 = n4 = 0
     # Calculate N1.
-    for j in range(len(mat)):
-        count = 1
-        adj = False
-        for i in range(1, len(mat)):
-            if mat[j][i] == mat[j][i-1]:
-                count += 1
-            else:
-                count = 1
-                adj = False
-            if count >= 5:
-                if not adj:
-                    adj = True
-                    n1 += 3
+    def getN1(mat,strategy):
+        n1=0
+        for j in range(len(mat)):
+            count = 1
+            adj = False
+            for i in range(1, len(mat)):
+                if strategy == "j":
+                    compare = mat[j][i-1]
+                elif strategy == "i":
+                    i,j=j,i
+                    compare = mat[j-1][i]
+                if mat[j][i] == compare:
+                    count += 1
                 else:
-                    n1 += 1
+                    count = 1
+                    adj = False
+                if count >= 5:
+                    if not adj:
+                        adj = True
+                        n1 += 3
+                    else:
+                        n1 += 1
+        return n1
+    """
     for i in range(len(mat)):
         count = 1
         adj = False
@@ -421,6 +454,8 @@ def _penalty(mat):
                     n1 += 3
                 else:
                     n1 += 1
+    """
+    n1=getN1(mat,"i")+getN1(mat,"j")
     # Calculate N2.
     m = n = 1
     for j in range(1, len(mat)):
@@ -435,17 +470,21 @@ def _penalty(mat):
                 m = n = 1
     # Calculate N3.
     count = 0
-    for row in mat:
-        rowstr = ''.join(str(e) for e in row)
-        occurrences = []
-        begin = 0
-        while rowstr.find('0100010', begin) != -1:
-            begin = rowstr.find('0100010', begin) + 7
-            occurrences.append(begin)
-        for begin in occurrences:
-            if rowstr.count('00000100010', begin-4) != 0 or rowstr.count('01000100000', begin) != 0:
-                count += 1
+    def getCount(mat):
+        count=0
+        for row in mat:
+            rowstr = ''.join(str(e) for e in row)
+            occurrences = []
+            begin = 0
+            while rowstr.find('0100010', begin) != -1:
+                begin = rowstr.find('0100010', begin) + 7
+                occurrences.append(begin)
+            for begin in occurrences:
+                if rowstr.count('00000100010', begin-4) != 0 or rowstr.count('01000100000', begin) != 0:
+                    count += 1
+        return count
     transposedMat = _transpose(mat)
+    """
     for row in transposedMat:
         rowstr = ''.join(str(e) for e in row)
         occurrences = []
@@ -456,7 +495,8 @@ def _penalty(mat):
         for begin in occurrences:
             if rowstr.count('00000100010', begin-4) != 0 or rowstr.count('01000100000', begin) != 0:
                 count += 1
-    n3 += 40 * count
+    """
+    n3 += 40 * (getCount(mat)+getCount(transposedMat))
     # Calculate N4.
     dark = sum(row.count(_DARK) for row in mat)
     percent = int((float(dark) / float(len(mat)**2)) * 100)
@@ -478,13 +518,13 @@ def _mask(mat):
         penalty[i] = _penalty(masked)
         # Print penalty scores for debug use.
         if __DEBUG:
-            print 'penalty for mask {}: {}'.format(i, penalty[i])
+            print ('penalty for mask {}: {}'.format(i, penalty[i]))
     # Find the id of the best mask.
     index = penalty.index(min(penalty))
     # Print selected mask and penalty score,
     # and generate image for masked QR code for debug use.
     if __DEBUG:
-        print 'mask {} selected with penalty {}'.format(index, penalty[index])
+        print ('mask {} selected with penalty {}'.format(index, penalty[index]))
         _genImage(maskeds[index], 210, 'masked.jpg')
     return maskeds[index], index
 
@@ -499,6 +539,6 @@ def qrcode(data, width=210, filename='qrcode.jpg'):
     '''Module public interface'''
     try:
         _genImage(_genBitmap(_encode(data)), width, filename)
-    except Exception, e:
-        print e
+    except Exception as e:
+        print (e)
         raise e
