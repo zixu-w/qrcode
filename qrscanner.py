@@ -186,9 +186,9 @@ def _decodeData(data):
     decoder = reedsolo.RSCodec(7)
     data=decoder.decode(data)[:19]
     heximal=data.hex()
-    heximal=heximal[1:]
+    heximal=heximal[3:]
     while heximal[-1:]!="0":
-        heximal = heximal[:-4]
+        heximal = heximal[:-2]
     heximal=heximal[:-1]
     bytesarr=bytearray.fromhex(heximal)
     return bytesarr
@@ -207,11 +207,10 @@ def scan(fileName,matrixWidth=21):
         _QRFormatCheck(1,bitMap)
         maskCode = _getMaskCode(bitMap)
         unmaskedData = _getUnmaskedData(bitMap,maskCode)
-        oracle = qrcode._fillData(qrcode._encode("hello"))
         encodedData = _getEncodedData(unmaskedData)
         decodedData = _decodeData(encodedData)
         original = _decodeBytes(decodedData)
-        print (original)
+        return original
     except Exception as e:
         print (e)
         raise e
