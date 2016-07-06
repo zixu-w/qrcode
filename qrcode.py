@@ -1,6 +1,7 @@
 ######################################
 # File:             qrcode.py
 # Author:           Wang Zixu
+# Co-Author:        CHEN Zhihan
 # Last modified:    July 6, 2016 by Zhihan CHEN
 ######################################
 
@@ -429,13 +430,13 @@ def _mask(mat):
         if __DEBUG:
             print ('penalty for mask {}: {}'.format(i, penalty[i]))
     # Find the id of the best mask.
-    index = penalty.index(min(penalty))
+    selected = penalty.index(min(penalty))
     # Print selected mask and penalty score,
     # and generate image for masked QR code for debug use.
     if __DEBUG:
         print ('mask {} selected with penalty {}'.format(index, penalty[index]))
         _genImage(maskeds[index], 210, 'masked.jpg')
-    return maskeds[index], index
+    return maskeds[selected], selected
 
 def _genBitmap(bitstream):
     '''
