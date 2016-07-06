@@ -112,7 +112,6 @@ def _fillMaskCodeArea(matrix,maskCodeArray):
     return newMatrix
 
 _maskCodeArea = _fillMaskCodeArea([[True for i in range(21)] for j in range(21)],[[False] for i in range(15)])
-qrcode._genImage(_maskCodeArea,210,"maskCodeArea.jpg")
 def _maskCodeAreaAsList():
     result = []
     for i in range(21):
@@ -162,11 +161,8 @@ def _getByte(matrix,downwards=False):
         matrix=matrix[::-1]
     byteList = [0 for i in range(8)]
     for i in range(8):
-        
         byteList[7-i]=1-int(matrix[i//2][i%2])
-    byte=0
-    for i in range(8):
-        byte += byteList[i]* 2**(7-i)
+    byte = sum([byteList[i]*2**(7-i) for i in range(8)])
     return byte
 
 
