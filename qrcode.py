@@ -5,6 +5,7 @@
 ######################################
 
 from PIL import Image, ImageDraw
+from matrix import transpose,copyFrom,logicAnd,logicXor
 import copy
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -28,11 +29,11 @@ import copy
 '''''''''''''''''''''''''''''''''''''''''''''''''''
 
 # Debug echo flag.
-__DEBUG = False
+__DEBUG = True
 
 # 1 represents light pixels and 0 represents dark pixels in PIL.
-_LIGHT = 1
-_DARK = 0
+_LIGHT = True
+_DARK = False
 
 class CapacityOverflowException(Exception):
     '''Exception for data larger than 17 characters in V1-L byte mode.'''
@@ -42,23 +43,6 @@ class CapacityOverflowException(Exception):
     def __str__(self):
         return repr(self.arg)
 
-def _matCp(src, dst, top, left):
-    '''
-    Copy the content of matrix src into matrix dst.
-    The top-left corner of src is positioned at (left, top)
-    in dst.
-    '''
-    res = copy.deepcopy(dst)
-    for j in range(len(src)):
-        for i in range(len(src[0])):
-            res[top+j][left+i] = src[j][i]
-    return res
-
-def _transpose(mat):
-    '''Transpose a matrix'''
-    res = [[mat[j][i] for j in range(len(mat))] for i in range(len(mat[0]))]
-    return res
-
 def _timSeq(len, vertical=False):
     '''
     Generate a horizontal, unless specified vertical
@@ -67,69 +51,40 @@ def _timSeq(len, vertical=False):
     '''
     res = [[i % 2 for i in range(len)]]
     if vertical:
-        res = _transpose(res)
+        res = transpose(res)
     return res
-
-def _matAnd(mat1, mat2):
-    '''
-    Matrix-wise and.
-    Dark and dark -> dark
-    Light and light -> light
-    Dark and light -> light
-    Light and dark -> light
-    '''
-    res = [[_LIGHT for i in range(len(mat1[0]))] for j in range(len(mat1))]
-    for j in range(len(mat1)):
-        for i in range(len(mat1[0])):
-            res[j][i] = int(mat1[j][i] == _LIGHT or mat2[j][i] == _LIGHT)
-    return res
-
-def _matXor(mat1, mat2):
-    '''
-    Matrix-wise xor.
-    Dark xor dark -> light
-    Light xor light -> light
-    Dark xor light -> dark
-    Light xor dark -> dark
-    '''
-    res = [[_LIGHT for i in range(len(mat1[0]))] for j in range(len(mat1))]
-    for j in range(len(mat1)):
-        for i in range(len(mat1[0])):
-            res[j][i] = int(mat1[j][i] == mat2[j][i])
-    return res
-
 
 # Initialize pre-defined tool matrices.
 
 # Finder pattern.
-_finder = _matCp(_matCp([[_DARK for i in range(3)] for j in range(3)],
+_finder = copyFrom(copyFrom([[_DARK for i in range(3)] for j in range(3)],
     [[_LIGHT for i in range(5)] for j in range(5)], 1, 1),
     [[_DARK for i in range(7)] for j in range(7)], 1, 1)
 
 # Alignment pattern. Not used in version 1.
-_align = _matCp(_matCp([[_DARK]],
+_align = copyFrom(copyFrom([[_DARK]],
     [[_LIGHT for i in range(3)] for j in range(3)], 1, 1),
     [[_DARK for i in range(5)] for j in range(5)], 1, 1)
 
 # Version 1 QR code template with finder patterns and timing sequences.
 _ver1 = [[_LIGHT for i in range(21)] for j in range(21)]
-_ver1 = _matCp(_finder, _ver1, 0, 0)
-_ver1 = _matCp(_finder, _ver1, 14, 0)
-_ver1 = _matCp(_finder, _ver1, 0, 14)
-_ver1 = _matCp(_timSeq(5), _ver1, 6, 8)
-_ver1 = _matCp(_timSeq(5, vertical=True), _ver1, 8, 6)
-_ver1 = _matCp([[_DARK]], _ver1, 13, 8)
+_ver1 = copyFrom(_finder, _ver1, 0, 0)
+_ver1 = copyFrom(_finder, _ver1, 14, 0)
+_ver1 = copyFrom(_finder, _ver1, 0, 14)
+_ver1 = copyFrom(_timSeq(5), _ver1, 6, 8)
+_ver1 = copyFrom(_timSeq(5, vertical=True), _ver1, 8, 6)
+_ver1 = copyFrom([[_DARK]], _ver1, 13, 8)
 
 # Data area mask to avoid applying masks to functional area.
 _dataAreaMask = [[_DARK for i in range(21)] for j in range(21)]
-_dataAreaMask = _matCp([[_LIGHT for i in range(9)] for j in range(9)],
+_dataAreaMask = copyFrom([[_LIGHT for i in range(9)] for j in range(9)],
     _dataAreaMask, 0, 0)
-_dataAreaMask = _matCp([[_LIGHT for i in range(9)] for j in range(8)],
+_dataAreaMask = copyFrom([[_LIGHT for i in range(9)] for j in range(8)],
     _dataAreaMask, 13, 0)
-_dataAreaMask = _matCp([[_LIGHT for i in range(8)] for j in range(9)],
+_dataAreaMask = copyFrom([[_LIGHT for i in range(8)] for j in range(9)],
     _dataAreaMask, 0, 13)
-_dataAreaMask = _matCp([[_LIGHT for i in range(4)]], _dataAreaMask, 6, 9)
-_dataAreaMask = _matCp([[_LIGHT] for i in range(4)], _dataAreaMask, 9, 6)
+_dataAreaMask = copyFrom([[_LIGHT for i in range(4)]], _dataAreaMask, 6, 9)
+_dataAreaMask = copyFrom([[_LIGHT] for i in range(4)], _dataAreaMask, 9, 6)
 
 # Data masks defined in QR standard.
 
@@ -155,25 +110,8 @@ def darkPolicy(index):
     return lambda i,j:choose(index,i,j)
 
 maskList = [[[_DARK if darkPolicy(c)(i,j) else _LIGHT for i in range(21)] for j in range(21)] for c in range(8)]
-_dataMasks = [_matAnd(_dataAreaMask,mask) for mask in maskList]
-"""
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if (i+j)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if j%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if i%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if (i+j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if (j/2 + i/3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if (i*j)%2+(i*j)%3==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if ((i*j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-_dataMasks.append(_matAnd(_dataAreaMask,
-    [[_DARK if ((i+j)%2+(i*j)%3)%2==0 else _LIGHT for i in range(21)] for j in range(21)]))
-"""
+_dataMasks = [logicAnd(_dataAreaMask,mask) for mask in maskList]
+
 def _genImage(bitmap, width, filename):
     '''
     Generate image corresponding to the input bitmap
@@ -348,27 +286,27 @@ def _fillData(bitstream):
     '''Fill the encoded data into the template QR code matrix'''
     res = copy.deepcopy(_ver1)
     for i in range(15):
-        res = _matCp(_fillByte(bitstream[i], (i//3)%2!=0),
+        res = copyFrom(_fillByte(bitstream[i], (i//3)%2!=0),
             res,
             21-4*((i%3-1)*(-1)**((i//3)%2)+2),
             21-2*(i//3+1))
     tmp = _fillByte(bitstream[15])
-    res = _matCp(tmp[2:], res, 7, 11)
-    res = _matCp(tmp[:2], res, 4, 11)
+    res = copyFrom(tmp[2:], res, 7, 11)
+    res = copyFrom(tmp[:2], res, 4, 11)
     tmp = _fillByte(bitstream[16])
-    res = _matCp(tmp, res, 0, 11)
+    res = copyFrom(tmp, res, 0, 11)
     tmp = _fillByte(bitstream[17], True)
-    res = _matCp(tmp, res, 0, 9)
+    res = copyFrom(tmp, res, 0, 9)
     tmp = _fillByte(bitstream[18], True)
-    res = _matCp(tmp[:2], res, 4, 9)
-    res = _matCp(tmp[2:], res, 7, 9)
+    res = copyFrom(tmp[:2], res, 4, 9)
+    res = copyFrom(tmp[2:], res, 7, 9)
     for i in range(3):
-        res = _matCp(_fillByte(bitstream[19+i], True),
+        res = copyFrom(_fillByte(bitstream[19+i], True),
             res, 9+4*i, 9)
     tmp = _fillByte(bitstream[22])
-    res = _matCp(tmp, res, 9, 7)
+    res = copyFrom(tmp, res, 9, 7)
     for i in range(3):
-        res = _matCp(_fillByte(bitstream[23+i], i%2==0),
+        res = copyFrom(_fillByte(bitstream[23+i], i%2==0),
             res, 9, 4-2*i)
     # Generate image after filling data for debug use.
     if __DEBUG:
@@ -386,12 +324,12 @@ def _fillInfo(arg):
     # to get the 15 bits format code with EC bits.
     fmt = _fmtEncode(int('01'+'{:03b}'.format(mask), 2))
     fmtarr = [[not int(c)] for c in '{:015b}'.format(fmt)]
-    mat = _matCp(_transpose(fmtarr[7:]), mat, 8, 13)
-    mat = _matCp(fmtarr[9:][::-1], mat, 0, 8)
-    mat = _matCp(fmtarr[7:9][::-1], mat, 7, 8)
-    mat = _matCp(fmtarr[:7][::-1], mat, 14, 8)
-    mat = _matCp(_transpose(fmtarr[:6]), mat, 8, 0)
-    mat = _matCp([fmtarr[6]], mat, 8, 7)
+    mat = copyFrom(transpose(fmtarr[7:]), mat, 8, 13)
+    mat = copyFrom(fmtarr[9:][::-1], mat, 0, 8)
+    mat = copyFrom(fmtarr[7:9][::-1], mat, 7, 8)
+    mat = copyFrom(fmtarr[:7][::-1], mat, 14, 8)
+    mat = copyFrom(transpose(fmtarr[:6]), mat, 8, 0)
+    mat = copyFrom([fmtarr[6]], mat, 8, 7)
     return mat
 
 def _penalty(mat):
@@ -438,23 +376,6 @@ def _penalty(mat):
                     else:
                         n1 += 1
         return n1
-    """
-    for i in range(len(mat)):
-        count = 1
-        adj = False
-        for j in range(1, len(mat)):
-            if mat[j][i] == mat[j-1][i]:
-                count += 1
-            else:
-                count = 1
-                adj = False
-            if count >= 5:
-                if not adj:
-                    adj = True
-                    n1 += 3
-                else:
-                    n1 += 1
-    """
     n1=getN1(mat,"i")+getN1(mat,"j")
     # Calculate N2.
     m = n = 1
@@ -483,19 +404,7 @@ def _penalty(mat):
                 if rowstr.count('00000100010', begin-4) != 0 or rowstr.count('01000100000', begin) != 0:
                     count += 1
         return count
-    transposedMat = _transpose(mat)
-    """
-    for row in transposedMat:
-        rowstr = ''.join(str(e) for e in row)
-        occurrences = []
-        begin = 0
-        while rowstr.find('0100010', begin) != -1:
-            begin = rowstr.find('0100010', begin) + 7
-            occurrences.append(begin)
-        for begin in occurrences:
-            if rowstr.count('00000100010', begin-4) != 0 or rowstr.count('01000100000', begin) != 0:
-                count += 1
-    """
+    transposedMat = transpose(mat)
     n3 += 40 * (getCount(mat)+getCount(transposedMat))
     # Calculate N4.
     dark = sum(row.count(_DARK) for row in mat)
@@ -512,7 +421,7 @@ def _mask(mat):
     and select the best mask.
     Return tuple(selected masked matrix, number of selected mask).
     '''
-    maskeds = [_matXor(mat, dataMask) for dataMask in _dataMasks]
+    maskeds = [logicXor(mat, dataMask) for dataMask in _dataMasks]
     penalty = [0] * 8
     for i, masked in enumerate(maskeds):
         penalty[i] = _penalty(masked)
