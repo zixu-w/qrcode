@@ -89,28 +89,26 @@ _dataAreaMask = copyFrom([[_LIGHT] for i in range(4)], _dataAreaMask, 9, 6)
 
 # Data masks defined in QR standard.
 
-def darkPolicy(index):
-    def choose(index,i,j):
-        if index==0:
-            policy = (i+j)%2
-        elif index == 1:
-            policy = j%2
-        elif index == 2:
-            policy = i%3
-        elif index == 3:
-            policy = (i+j)%3
-        elif index == 4:
-            policy = (j//2 + i//3)%2
-        elif index == 5:
-            policy = (i*j)%2+(i*j)%3
-        elif index == 6:
-            policy = ((i*j)%2+(i*j)%3)%2
-        elif index == 7:
-            policy = ((i+j)%2+(i*j)%3)%2
-        return policy == 0
-    return lambda i,j:choose(index,i,j)
+def _maskIsDark(index,i,j):
+    if index==0:
+        policy = (i+j)%2
+    elif index == 1:
+        policy = j%2
+    elif index == 2:
+        policy = i%3
+    elif index == 3:
+        policy = (i+j)%3
+    elif index == 4:
+        policy = (j//2 + i//3)%2
+    elif index == 5:
+        policy = (i*j)%2+(i*j)%3
+    elif index == 6:
+        policy = ((i*j)%2+(i*j)%3)%2
+    elif index == 7:
+        policy = ((i+j)%2+(i*j)%3)%2
+    return policy == 0
 
-maskList = [[[_DARK if darkPolicy(c)(i,j) else _LIGHT for i in range(21)] for j in range(21)] for c in range(8)]
+maskList = [[[_DARK if _maskIsDark(c,i,j) else _LIGHT for i in range(21)] for j in range(21)] for c in range(8)]
 _dataMasks = [logicAnd(_dataAreaMask,mask) for mask in maskList]
 
 def _genImage(bitmap, width, filename):

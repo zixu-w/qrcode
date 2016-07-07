@@ -15,6 +15,7 @@ import matrix
 from matrix import transpose,logicAnd,logicXor,copyFrom
 import sys
 import qrcode
+from qrcode import _dataAreaMask,_dataMasks,_ver1
 import copy
 import reedsolo
 
@@ -28,51 +29,6 @@ class ImageError(Exception):
         self.arg=arg
     def __str__(self):
         return str(self.arg)
-
-def _maskIsDark(index,i,j):
-    if index==0:
-        policy = (i+j)%2
-    elif index == 1:
-        policy = j%2
-    elif index == 2:
-        policy = i%3
-    elif index == 3:
-        policy = (i+j)%3
-    elif index == 4:
-        policy = (j//2 + i//3)%2
-    elif index == 5:
-        policy = (i*j)%2+(i*j)%3
-    elif index == 6:
-        policy = ((i*j)%2+(i*j)%3)%2
-    elif index == 7:
-        policy = ((i+j)%2+(i*j)%3)%2
-    return policy == 0
-
-_finder = copyFrom(copyFrom([[_DARK for i in range(3)] for j in range(3)],
-[[_LIGHT for i in range(5)] for j in range(5)], 1, 1),
-[[_DARK for i in range(7)] for j in range(7)], 1, 1)
-
-_ver1 = [[_LIGHT for i in range(21)] for j in range(21)]
-_ver1 = copyFrom(_finder, _ver1, 0, 0)
-_ver1 = copyFrom(_finder, _ver1, 14, 0)
-_ver1 = copyFrom(_finder, _ver1, 0, 14)
-_ver1 = copyFrom(qrcode._timSeq(5), _ver1, 6, 8)
-_ver1 = copyFrom(qrcode._timSeq(5, vertical=True), _ver1, 8, 6)
-_ver1 = copyFrom([[_DARK]], _ver1, 13, 8)
-
-_dataAreaMask = [[_DARK for i in range(21)] for j in range(21)]
-_dataAreaMask = copyFrom([[_LIGHT for i in range(9)] for j in range(9)],
-    _dataAreaMask, 0, 0)
-_dataAreaMask = copyFrom([[_LIGHT for i in range(9)] for j in range(8)],
-    _dataAreaMask, 13, 0)
-_dataAreaMask = copyFrom([[_LIGHT for i in range(8)] for j in range(9)],
-    _dataAreaMask, 0, 13)
-_dataAreaMask = copyFrom([[_LIGHT for i in range(4)]], _dataAreaMask, 6, 9)
-_dataAreaMask = copyFrom([[_LIGHT] for i in range(4)], _dataAreaMask, 9, 6)
-
-_maskList = [[[_DARK if _maskIsDark(c,i,j) else _LIGHT for i in range(21)] for j in range(21)] for c in range(8)]
-_dataMasks = [logicAnd(_dataAreaMask,mask) for mask in _maskList]
-
 
 def _readImage(file):
     try:
@@ -185,7 +141,9 @@ def _getEncodedData(bitMap):
 def _decodeData(data):
     decoder = reedsolo.RSCodec(7)
     data=decoder.decode(data)[:19]
-    heximal=data.hex()
+    heximal = ""
+    for i in data:
+        heximal+="{:02X}".format(i)
     heximal=heximal[3:]
     while heximal[-1:]!="0":
         heximal = heximal[:-2]
