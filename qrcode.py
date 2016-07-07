@@ -2,7 +2,7 @@
 # File:             qrcode.py
 # Author:           Wang Zixu
 # Co-Author:        CHEN Zhihan
-# Last modified:    July 6, 2016 by Zhihan CHEN
+# Last modified:    July 6, 2016 GMT-7 by Zhihan CHEN
 ######################################
 
 from PIL import Image, ImageDraw
