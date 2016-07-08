@@ -1,7 +1,5 @@
-#!usr/bin/python3
 
 import copy
-
 
 def transpose(mat):
     '''Transpose a matrix'''
@@ -41,8 +39,6 @@ def logicAnd(mat1, mat2):
             res[j][i] = mat1[j][i] or mat2[j][i] 
     return res
 
-
-
 def logicOr(mat1,mat2):
     """
     B + B -> B
@@ -61,6 +57,7 @@ def logicNot(mat1):
         for i in range(len(mat1[0])):
             res[j][i] = not mat1[j][i]
     return res
+
 def logicXor(mat1, mat2):
     '''
     Matrix-wise xor.
@@ -74,4 +71,3 @@ def logicXor(mat1, mat2):
         for i in range(len(mat1[0])):
             res[j][i] = mat1[j][i] == mat2[j][i]
     return res
-

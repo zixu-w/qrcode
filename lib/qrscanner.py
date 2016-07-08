@@ -1,4 +1,8 @@
-# -*- coding: utf-8 -*-
+##########################################
+# File:             qrscanner.py
+# Author:           CHEN Zhihan
+# Last modified:    July 8, 2016
+##########################################
 
 """
 Mainly developed from QRCode by Zixu WANG
@@ -8,20 +12,13 @@ Special thanks to Tomer Filiba, rotorgit and Stephen Larroque for their rsDecode
 Author: Zhihan CHEN<CHEN.Zhihan@outlook.com>
 """
 
-
-from PIL import Image
-import matrix
-from matrix import transpose, logicAnd, logicXor, copyFrom
 import sys
-import qrcode
-from qrcode import _dataAreaMask, _dataMasks, _ver1
 import copy
 import reedsolo
-
-
-_LIGHT = 1
-_DARK = 0
-
+from qrgenerator import _fmtEncode, _fillByte, _encode
+from PIL import Image
+from util import *
+from util import _dataAreaMask
 
 class ImageError(Exception):
     def __init__(self,arg):
@@ -34,7 +31,6 @@ def _readImage(file):
         image = Image.open(file)
         return image
     except Exception as e:
-        print (e)
         raise e
 
 def _boolize(pixel):
@@ -54,7 +50,6 @@ def _pixelCheck(pixels,width,matrixWidth=21):
                     if _boolize(pixels[iNormal*pixelWidth+i,jNormal*pixelWidth+j])!=color:
                         raise ImageError("Not a QR Code")
     return True
-
 
 def _fillMaskCodeArea(matrix,maskCodeArray):
     newMatrix = copy.deepcopy(matrix)
@@ -77,14 +72,15 @@ def _maskCodeAreaAsList():
 
 def _QRFormatCheck(version,bitMap):
     if version==1:
-        fourDarks = matrix.logicAnd(logicXor(_ver1,bitMap),matrix.logicNot(_dataAreaMask))
+        fourDarks = logicAnd(logicXor(ver1Temp,bitMap), logicNot(_dataAreaMask))
         result = copy.deepcopy(bitMap)
         for i in range(len(bitMap)):
             for j in range(len(bitMap[0])):
                 if not _dataAreaMask[j][i] or not _maskCodeArea[j][i]:
                     result[j][i]=True
-        if not all([all(i) for i in logicXor(result,_ver1)]):
+        if not all([all(i) for i in logicXor(result,ver1Temp)]):
             raise ImageError("QRCode version 1 Format not satisfied")
+
 def _generateBitMap(pixels,width,matrixWidth=21):
     result={}
     bitMap = [[False for x in range(21)] for y in range(21)]
@@ -96,7 +92,7 @@ def _generateBitMap(pixels,width,matrixWidth=21):
 
 def _getMaskCode(bitMap):
     for maskCode in range(8):
-        formatMaskCode = qrcode._fmtEncode(int('01'+'{:03b}'.format(maskCode), 2))
+        formatMaskCode = _fmtEncode(int('01'+'{:03b}'.format(maskCode), 2))
         maskCodeArray = [[not int(c)] for c in '{:015b}'.format(formatMaskCode)]
         emptyMatrix = [[True for i in range(21)] for j in range(21)]
         emptyMatrix = _fillMaskCodeArea(emptyMatrix,maskCodeArray)
@@ -109,7 +105,7 @@ def _getMaskCode(bitMap):
             return maskCode
 
 def _getUnmaskedData(bitMap,maskCode):
-    return logicXor(logicAnd(bitMap,_dataAreaMask),_dataMasks[maskCode])
+    return logicXor(logicAnd(bitMap,_dataAreaMask),dataMasks[maskCode])
 
 def _getByte(matrix,downwards=False):
     if downwards:
@@ -120,21 +116,20 @@ def _getByte(matrix,downwards=False):
     byte = sum([byteList[i]*2**(7-i) for i in range(8)])
     return byte
 
-
 def _getEncodedData(bitMap):
-    bytes23_25=[ _getByte(matrix.getPart(bitMap,9,4-2*i),i%2==0)for i in range(3)]
-    byte22 = _getByte(matrix.getPart(bitMap,9,7))
-    oracle=qrcode._fillByte(qrcode._encode("hello")[22])
-    bytes19_21 = [ _getByte(matrix.getPart(bitMap,9+4*i,9),True) for i in range(3)]
-    byte18_p1 = matrix.getPart(bitMap,4,9,2,2)
-    byte18_p2 = matrix.getPart(bitMap,7,9,2,2)
+    bytes23_25=[ _getByte(getPart(bitMap,9,4-2*i),i%2==0)for i in range(3)]
+    byte22 = _getByte(getPart(bitMap,9,7))
+    oracle=_fillByte(_encode("hello")[22])
+    bytes19_21 = [ _getByte(getPart(bitMap,9+4*i,9),True) for i in range(3)]
+    byte18_p1 = getPart(bitMap,4,9,2,2)
+    byte18_p2 = getPart(bitMap,7,9,2,2)
     byte18 = _getByte(byte18_p1+byte18_p2,True)
-    byte17 = _getByte(matrix.getPart(bitMap,0,9),True)
-    byte16 = _getByte(matrix.getPart(bitMap,0,11))
-    byte15_p1 = matrix.getPart(bitMap,4,11,2,2)
-    byte15_p2 = matrix.getPart(bitMap,7,11,2,2)
+    byte17 = _getByte(getPart(bitMap,0,9),True)
+    byte16 = _getByte(getPart(bitMap,0,11))
+    byte15_p1 = getPart(bitMap,4,11,2,2)
+    byte15_p2 = getPart(bitMap,7,11,2,2)
     byte15 = _getByte(byte15_p1+byte15_p2)
-    bytes0_14 = [ _getByte(matrix.getPart(bitMap,21-4*((i%3-1)*(-1)**((i//3)%2)+2),21-2*(i//3+1)),(i//3)%2!=0) for i in range(15)]
+    bytes0_14 = [ _getByte(getPart(bitMap,21-4*((i%3-1)*(-1)**((i//3)%2)+2),21-2*(i//3+1)),(i//3)%2!=0) for i in range(15)]
     return bytes0_14+[byte15]+[byte16]+[byte17]+[byte18]+bytes19_21+[byte22]+bytes23_25
 
 def _decodeData(data):
@@ -153,9 +148,9 @@ def _decodeData(data):
 def _decodeBytes(bytes):
     return bytes.decode("iso-8859-1")
 
-def scan(fileName,matrixWidth=21):
+def scan(filename,matrixWidth=21):
     try:
-        image = _readImage(fileName)
+        image = _readImage(filename)
         pixels=image.load()
         width,height=image.size
         _sizeCheck(width,height)
@@ -169,6 +164,4 @@ def scan(fileName,matrixWidth=21):
         original = _decodeBytes(decodedData)
         return original
     except Exception as e:
-        print (e)
         raise e
-
