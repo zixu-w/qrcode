@@ -1,2 +1,2 @@
 # qrcode
-Python QR code generator
+Python QR code module.

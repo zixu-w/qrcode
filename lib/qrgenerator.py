@@ -12,12 +12,6 @@ import copy
     Python version 1-L QR code generator.
     Other versions to be implemented.
 
-    Usage:
-        import qrcode
-        qrcode.qrcode(data string [, width] [, filename])
-
-    Or see qrcode_example.py
-
     Coordinate system used:
             i
         o-------->

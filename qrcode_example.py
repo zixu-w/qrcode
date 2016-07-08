@@ -1,9 +1,13 @@
 import qrcode
 
-qrcode.qrcode('Hello world!')
+qrcode.generate('Hello world!')
 
-qrcode.qrcode('Python QR code!', width=420, filename='example.jpg')
+qrcode.generate('Python QR code!', width=420, filename='example.jpg')
+
+qrcode.scan('qrcode.jpg')
+
+qrcode.scan('example.jpg')
 
 # Exception raised here, as version 1 QR code cannot encode 
 # more than 17 characters in byte mode.
-qrcode.qrcode('012345678901234567')
+qrcode.generate('012345678901234567')
