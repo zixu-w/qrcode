@@ -24,16 +24,22 @@ if __name__ == '__main__':
         if sys.argv[1] == '-g':
             width = 210
             filename = 'qrcode.jpg'
-            if sys.argv.index('-w') != -1:
+            try:
                 idxw = sys.argv.index('-w')
+            except ValueError:
+                pass
+            else:
                 try:
                     width = int(sys.argv[idxw+1])
                 except Exception:
                     raise InvalidArgs('Invalid arguments')
                 sys.argv.remove('-w')
                 sys.argv.remove(str(width))
-            if sys.argv.index('-f') != -1:
+            try:
                 idxf = sys.argv.index('-f')
+            except ValueError:
+                pass
+            else:
                 try:
                     filename = sys.argv[idxf+1]
                 except Exception:
