@@ -8,6 +8,6 @@ qrcode.scan('qrcode.jpg')
 
 qrcode.scan('example.jpg')
 
-# Exception raised here, as version 1 QR code cannot encode 
+# Exception raised here, as version 1 QR code cannot encode
 # more than 17 characters in byte mode.
 qrcode.generate('012345678901234567')

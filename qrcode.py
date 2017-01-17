@@ -2,7 +2,7 @@
 # File:             qrcode.py
 # Author:           Wang Zixu
 # Co-Author:        CHEN Zhihan
-# Last modified:    July 8, 2016
+# Last modified:    Jan 17, 2017
 ##########################################
 
 from lib.qrgenerator import generate
@@ -15,9 +15,10 @@ if __name__ == '__main__':
         """Invalid arguments passed in."""
         def __init__(self, arg):
             self.arg = arg
+
         def __str__(self):
             return repr(self.arg)
-    
+
     try:
         if len(sys.argv) < 2:
             raise InvalidArgs('Invalid arguments')
@@ -58,8 +59,8 @@ if __name__ == '__main__':
         else:
             raise InvalidArgs('Invalid arguments')
     except InvalidArgs:
-        print('Usage:\n'
-            +'Generating: python qrcode.py -g data [-w width] [-f filename]\n'
-            +'Scanning: python qrcode.py -s filename')
+        print('Usage:\n' +
+              'Generate: python qrcode.py -g data [-w width] [-f filename]\n' +
+              'Scan: python qrcode.py -s filename')
     except Exception as e:
         print(e)

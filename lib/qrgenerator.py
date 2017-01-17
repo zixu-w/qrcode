@@ -2,7 +2,7 @@
 # File:             qrcodegenerator.py
 # Author:           Wang Zixu
 # Co-Author:        CHEN Zhihan
-# Last modified:    July 8, 2016
+# Last modified:    Jan 17, 2017
 ##########################################
 
 from util import *
@@ -22,6 +22,7 @@ import copy
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''
 
+
 class CapacityOverflowException(Exception):
     '''Exception for data larger than 17 characters in V1-L byte mode.'''
     def __init__(self, arg):
@@ -29,6 +30,7 @@ class CapacityOverflowException(Exception):
 
     def __str__(self):
         return repr(self.arg)
+
 
 def _gfpMul(x, y, prim=0x11d, field_charac_full=256, carryless=True):
     '''Galois field GF(2^8) multiplication.'''
@@ -58,15 +60,18 @@ for i in range(255):
 for i in range(255, 512):
     _gfExp[i] = _gfExp[i-255]
 
+
 def _gfPow(x, pow):
     '''GF power.'''
     return _gfExp[(_gfLog[x] * pow) % 255]
+
 
 def _gfMul(x, y):
     '''Simplified GF multiplication.'''
     if x == 0 or y == 0:
         return 0
     return _gfExp[_gfLog[x] + _gfLog[y]]
+
 
 def _gfPolyMul(p, q):
     '''GF polynomial multiplication.'''
@@ -75,6 +80,7 @@ def _gfPolyMul(p, q):
         for i in range(len(p)):
             r[i+j] ^= _gfMul(p[i], q[j])
     return r
+
 
 def _gfPolyDiv(dividend, divisor):
     '''GF polynomial division.'''
@@ -88,12 +94,14 @@ def _gfPolyDiv(dividend, divisor):
     sep = -(len(divisor) - 1)
     return res[:sep], res[sep:]
 
+
 def _rsGenPoly(nsym):
     '''Generate generator polynomial for RS algorithm.'''
     g = [1]
     for i in range(nsym):
         g = _gfPolyMul(g, [1, _gfPow(2, i)])
     return g
+
 
 def _rsEncode(bitstring, nsym):
     '''Encode bitstring with nsym EC bits using RS algorithm.'''
@@ -108,14 +116,16 @@ def _rsEncode(bitstring, nsym):
     res[:len(bitstring)] = bitstring
     return res
 
+
 def _fmtEncode(fmt):
     '''Encode the 15-bit format code using BCH code.'''
     g = 0x537
     code = fmt << 10
-    for i in range(4,-1,-1):
+    for i in range(4, -1, -1):
         if code & (1 << (i+10)):
             code ^= g << i
     return ((fmt << 10) ^ code) ^ 0b101010000010010
+
 
 def _encode(data):
     '''
@@ -149,6 +159,7 @@ def _encode(data):
     # Call _rsEncode to add 7 EC bits.
     return _rsEncode(res, 7)
 
+
 def _fillByte(byte, downwards=False):
     '''
     Fill a byte into a 2 by 4 matrix upwards,
@@ -165,19 +176,20 @@ def _fillByte(byte, downwards=False):
     bytestr = '{:08b}'.format(byte)
     res = [[0, 0] for i in range(4)]
     for i in range(8):
-        res[i//2][i%2] = not int(bytestr[7-i])
+        res[i // 2][i % 2] = not int(bytestr[7-i])
     if downwards:
         res = res[::-1]
     return res
+
 
 def _fillData(bitstream):
     '''Fill the encoded data into the template QR code matrix'''
     res = copy.deepcopy(ver1Temp)
     for i in range(15):
-        res = copyFrom(_fillByte(bitstream[i], (i//3)%2!=0),
-            res,
-            21-4*((i%3-1)*(-1)**((i//3)%2)+2),
-            21-2*(i//3+1))
+        res = copyFrom(_fillByte(bitstream[i], (i//3) % 2 != 0),
+                       res,
+                       21-4*((i % 3-1)*(-1)**((i//3) % 2)+2),
+                       21-2*(i//3+1))
     tmp = _fillByte(bitstream[15])
     res = copyFrom(tmp[2:], res, 7, 11)
     res = copyFrom(tmp[:2], res, 4, 11)
@@ -190,16 +202,17 @@ def _fillData(bitstream):
     res = copyFrom(tmp[2:], res, 7, 9)
     for i in range(3):
         res = copyFrom(_fillByte(bitstream[19+i], True),
-            res, 9+4*i, 9)
+                       res, 9+4*i, 9)
     tmp = _fillByte(bitstream[22])
     res = copyFrom(tmp, res, 9, 7)
     for i in range(3):
-        res = copyFrom(_fillByte(bitstream[23+i], i%2==0),
-            res, 9, 4-2*i)
+        res = copyFrom(_fillByte(bitstream[23+i], i % 2 == 0),
+                       res, 9, 4-2*i)
     # Generate image after filling data for debug use.
     if DEBUG:
         genImage(res, 210, 'data.jpg')
     return res
+
 
 def _fillInfo(arg):
     '''
@@ -219,6 +232,7 @@ def _fillInfo(arg):
     mat = copyFrom(transpose(fmtarr[:6]), mat, 8, 0)
     mat = copyFrom([fmtarr[6]], mat, 8, 7)
     return mat
+
 
 def _penalty(mat):
     '''
@@ -241,8 +255,9 @@ def _penalty(mat):
     # Initialize.
     n1 = n2 = n3 = n4 = 0
     # Calculate N1.
-    def getN1(mat,strategy):
-        n1=0
+
+    def getN1(mat, strategy):
+        n1 = 0
         for j in range(len(mat)):
             count = 1
             adj = False
@@ -250,7 +265,7 @@ def _penalty(mat):
                 if strategy == "j":
                     compare = mat[j][i-1]
                 elif strategy == "i":
-                    i,j=j,i
+                    i, j = j, i
                     compare = mat[j-1][i]
                 if mat[j][i] == compare:
                     count += 1
@@ -265,13 +280,14 @@ def _penalty(mat):
                         n1 += 1
         return n1
 
-    n1=getN1(mat,"i")+getN1(mat,"j")
+    n1 = getN1(mat, "i") + getN1(mat, "j")
 
     # Calculate N2.
     m = n = 1
     for j in range(1, len(mat)):
         for i in range(1, len(mat)):
-            if mat[j][i] == mat[j-1][i] and mat[j][i] == mat[j][i-1] and mat[j][i] == mat[j-1][i-1]:
+            if (mat[j][i] == mat[j-1][i] and mat[j][i] == mat[j][i-1] and
+                mat[j][i] == mat[j-1][i-1]):
                 if mat[j][i] == mat[j-1][i]:
                     m += 1
                 if mat[j][i] == mat[j][i-1]:
@@ -282,8 +298,9 @@ def _penalty(mat):
 
     # Calculate N3.
     count = 0
+
     def getCount(mat):
-        count=0
+        count = 0
         for row in mat:
             rowstr = ''.join(str(e) for e in row)
             occurrences = []
@@ -292,7 +309,8 @@ def _penalty(mat):
                 begin = rowstr.find('0100010', begin) + 7
                 occurrences.append(begin)
             for begin in occurrences:
-                if rowstr.count('00000100010', begin-4) != 0 or rowstr.count('01000100000', begin) != 0:
+                if (rowstr.count('00000100010', begin-4) != 0 or
+                    rowstr.count('01000100000', begin) != 0):
                     count += 1
         return count
 
@@ -309,6 +327,7 @@ def _penalty(mat):
     # Return final penalty score.
     return n1 + n2 + n3 + n4
 
+
 def _mask(mat):
     '''
     Mask the data QR code matrix with all 8 masks,
@@ -322,18 +341,21 @@ def _mask(mat):
         penalty[i] = _penalty(masked)
         # Print penalty scores for debug use.
         if DEBUG:
-            print ('penalty for mask {}: {}'.format(i, penalty[i]))
+            print('penalty for mask {}: {}'.format(i, penalty[i]))
     # Find the id of the best mask.
     selected = penalty.index(min(penalty))
     # Print selected mask and penalty score,
     # and generate image for masked QR code for debug use.
     if DEBUG:
-        print ('mask {} selected with penalty {}'.format(selected, penalty[selected]))
-        genImage(maskeds[selected], 210, 'selectedMasked(' + str(selected) + ').jpg')
+        print('mask {} selected with penalty {}'.format(selected,
+                                                        penalty[selected]))
+        genImage(maskeds[selected], 210,
+                 'selectedMasked(' + str(selected) + ').jpg')
         for i, masked in enumerate(maskeds):
             if i != selected:
                 genImage(masked, 210, 'masked(' + str(i) + ').jpg')
     return maskeds[selected], selected
+
 
 def _genBitmap(bitstream):
     '''
@@ -341,6 +363,7 @@ def _genBitmap(bitstream):
     final QR code bitmap.
     '''
     return _fillInfo(_mask(_fillData(bitstream)))
+
 
 def generate(data, width=210, filename='qrcode.jpg'):
     '''Module public interface'''
